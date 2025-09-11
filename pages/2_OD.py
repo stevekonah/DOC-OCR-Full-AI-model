@@ -94,7 +94,7 @@ if image is not None:
     np_image = np.frombuffer(image_bytes, np.uint8)
     image_cv = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
     
-    model = YOLO('yolov8n.pt')
+    model = YOLO('yolov8l.pt')
     
     with st.spinner('🔄 Analyzing your image... Please wait'):
         results = model.predict(image_cv, save=False, show=False)
