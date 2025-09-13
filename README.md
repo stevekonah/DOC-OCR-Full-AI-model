@@ -1,5 +1,6 @@
 AI & Data Interactive Platform
 ==============================
+## The model of OD ( object detection is very accurate in real images ) and it accuracy is medium in Inanimate objects
 
 Project Overview
 ----------------
@@ -10,6 +11,7 @@ This project is an all-in-one interactive platform for AI, machine learning, com
 3. OCR Text Extraction: Extract and organize text from images with EasyOCR, supporting multi-language recognition.
 4. Train Your Model App: Upload datasets, preprocess, train regression or classification models, and visualize metrics.
 5. Notes Module: Add, view, and manage personal notes within the app.
+6. 
 
 Features
 --------
