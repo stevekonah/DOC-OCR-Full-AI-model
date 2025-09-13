@@ -19,7 +19,6 @@ st.set_page_config(page_title="AI Regression Models", page_icon="📊", layout="
 # ---------- Design CSS ----------
 st.markdown("""
 <style>
-    /* Main header style */
     .main-header {
         font-size: 3rem;
         color: #4B8BBE;
@@ -27,8 +26,6 @@ st.markdown("""
         margin-bottom: 1rem;
         text-shadow: 0px 2px 4px rgba(0,0,0,0.2);
     }
-
-    /* Sub headers */
     .sub-header {
         font-size: 1.5rem;
         color: #306998;
@@ -36,8 +33,6 @@ st.markdown("""
         border-bottom: 2px solid #FFD43B;
         padding-bottom: 0.5rem;
     }
-
-    /* Info box style */
     .info-box {
         background-color: rgba(75, 139, 190, 0.1);
         padding: 1.5rem;
@@ -46,8 +41,6 @@ st.markdown("""
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-
-    /* Step box style */
     .step-box {
         background-color: rgba(255, 212, 59, 0.1);
         padding: 1rem;
@@ -55,8 +48,6 @@ st.markdown("""
         margin: 0.5rem 0;
         border-left: 3px solid #FFD43B;
     }
-
-    /* File uploader box */
     .uploader-box {
         background-color: rgba(255, 255, 255, 0.8);
         padding: 2rem;
@@ -65,8 +56,6 @@ st.markdown("""
         border: 2px dashed #4B8BBE;
         margin: 1.5rem 0;
     }
-
-    /* Success box */
     .success-box {
         background-color: rgba(52, 168, 83, 0.1);
         padding: 1rem;
@@ -74,8 +63,6 @@ st.markdown("""
         border-left: 3px solid #34A853;
         margin-top: 1rem;
     }
-
-    /* Emoji style */
     .emoji {
         font-size: 1.2em;
         margin-right: 0.5rem;
@@ -83,6 +70,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+# ---------- Function for Training ----------
 def mm(model__, dic_param):
     if "trained_model" not in st.session_state:
         main_pip = Pipeline(steps=[
@@ -105,9 +94,9 @@ def mm(model__, dic_param):
     st.subheader("🔢 Enter the input values for prediction")
     for x in train_columns:
         if x in numerical_train_data:
-            values[x] = st.number_input(f"Enter the value for {x} : ")
+            values[x] = st.number_input(f"Enter the value for {rename_map[x]} (renamed {x}): ")
         else:
-            values[x] = st.selectbox(f"Choose the value for {x}:", options=train_data[x].unique().tolist())
+            values[x] = st.selectbox(f"Choose the value for {rename_map[x]} (renamed {x}):", options=train_data[x].unique().tolist())
     test_data = pd.DataFrame([values])
     st.write("### ✅ Your Input Data")
     st.write(test_data)
@@ -118,6 +107,8 @@ def mm(model__, dic_param):
             predict_data = st.session_state.trained_model.predict(test_data)
             st.success(f"✅ Predicted Value: {predict_data[0]}")
 
+
+# ---------- UI ----------
 st.title("📌 AI Regression Models Playground")
 st.markdown('<div class="info-box">', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">🌟 Welcome!</div>', unsafe_allow_html=True)
@@ -146,23 +137,28 @@ file = st.file_uploader("", type=["csv"], label_visibility="collapsed")
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-
-
-
-
-
-
-
+# ---------- Main Logic ----------
 if file is not None:
     data = pd.read_csv(file)
     data.reset_index(drop=True, inplace=True)
 
+    # ---------- Fix column names ----------
+    original_columns = data.columns.tolist()
+    new_columns = [f"col_{i}" for i in range(len(original_columns))]
+    rename_map = dict(zip(new_columns, original_columns))
+    data.columns = new_columns
+
+    st.subheader("🛠 Column Mapping (Original → Renamed)")
+    st.write(rename_map)
+
+    # ---------- Data Preview ----------
     columns = data.columns
     choosed_cols = st.multiselect("📌 Select columns to display:", default=columns, options=columns)
     NumberOfRows = st.slider("🔍 Select number of rows to show:", max_value=1000, min_value=5, step=5)
     st.write("### 🔎 Data Preview")
     st.write(data.loc[0:NumberOfRows, choosed_cols])
 
+    # ---------- Target ----------
     st.subheader("🎯 Select your target column")
     numerical_columns_target = data.select_dtypes(include="number").columns
     target = st.selectbox("Choose the target column:", options=numerical_columns_target)
@@ -182,6 +178,7 @@ if file is not None:
         imputer = SimpleImputer(strategy="mean")
         data[[target]] = imputer.fit_transform(data[[target]])
 
+    # ---------- Preprocessing ----------
     st.subheader("📈 Choose your Regression Model")
     numerical_pipe = Pipeline(steps=[
         ("mean", SimpleImputer(strategy="mean")),
@@ -196,6 +193,7 @@ if file is not None:
         ("categorical", cat_pipe, categorical_data)
     ])
 
+    # ---------- Model Selection ----------
     choosed_model = st.selectbox("Select Model", options=[
         "LinearRegression", "ElasticNet", "DecisionTreeRegressor", "RandomForestRegressor",
         "GradientBoostingRegressor", "XGBoost", "SVR", "KNeighborsRegressor"
@@ -220,9 +218,9 @@ if file is not None:
         values = {}
         for x in train_columns:
             if x in numerical_train_data:
-                values[x] = st.number_input(f"Enter the value for {x} : ")
+                values[x] = st.number_input(f"Enter the value for {rename_map[x]} (renamed {x}) : ")
             else:
-                values[x] = st.selectbox(f"Choose the value for {x}:", options=train_data[x].unique().tolist())
+                values[x] = st.selectbox(f"Choose the value for {rename_map[x]} (renamed {x}):", options=train_data[x].unique().tolist())
         test_data = pd.DataFrame([values])
         st.write(test_data)
         if st.button("🚀 Predict the value"):
@@ -285,12 +283,12 @@ if file is not None:
             'model__weights': ['uniform', 'distance']
         })
 
-    
 
+    # ---------- Data Visualization ----------
     st.markdown("## 📊 Data Visualization")
     numerical_columns_gaph = data.select_dtypes(include="number").columns
     cat_columns_gaph = data.select_dtypes(include="object").columns
-    data_graph = data
+    data_graph = data.copy()
     for x in numerical_columns_gaph:
         data_graph[x] = data_graph[x].fillna(data_graph[x].mean())
     for x in cat_columns_gaph:
