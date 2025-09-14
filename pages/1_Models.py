@@ -19,7 +19,6 @@ st.set_page_config(page_title="AI Regression Models", page_icon="📊", layout="
 # ---------- Design CSS ----------
 st.markdown("""
 <style>
-    /* Main header style */
     .main-header {
         font-size: 3rem;
         color: #4B8BBE;
@@ -27,8 +26,6 @@ st.markdown("""
         margin-bottom: 1rem;
         text-shadow: 0px 2px 4px rgba(0,0,0,0.2);
     }
-
-    /* Sub headers */
     .sub-header {
         font-size: 1.5rem;
         color: #306998;
@@ -36,8 +33,6 @@ st.markdown("""
         border-bottom: 2px solid #FFD43B;
         padding-bottom: 0.5rem;
     }
-
-    /* Info box style */
     .info-box {
         background-color: rgba(75, 139, 190, 0.1);
         padding: 1.5rem;
@@ -46,8 +41,6 @@ st.markdown("""
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-
-    /* Step box style */
     .step-box {
         background-color: rgba(255, 212, 59, 0.1);
         padding: 1rem;
@@ -55,8 +48,6 @@ st.markdown("""
         margin: 0.5rem 0;
         border-left: 3px solid #FFD43B;
     }
-
-    /* File uploader box */
     .uploader-box {
         background-color: rgba(255, 255, 255, 0.8);
         padding: 2rem;
@@ -65,8 +56,6 @@ st.markdown("""
         border: 2px dashed #4B8BBE;
         margin: 1.5rem 0;
     }
-
-    /* Success box */
     .success-box {
         background-color: rgba(52, 168, 83, 0.1);
         padding: 1rem;
@@ -74,8 +63,6 @@ st.markdown("""
         border-left: 3px solid #34A853;
         margin-top: 1rem;
     }
-
-    /* Emoji style */
     .emoji {
         font-size: 1.2em;
         margin-right: 0.5rem;
@@ -83,6 +70,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+# 🔧 function for training & prediction
 def mm(model__, dic_param):
     if "trained_model" not in st.session_state:
         main_pip = Pipeline(steps=[
@@ -109,6 +98,10 @@ def mm(model__, dic_param):
         else:
             values[x] = st.selectbox(f"Choose the value for {x}:", options=train_data[x].unique().tolist())
     test_data = pd.DataFrame([values])
+
+    # ✅ ensure columns order same as training
+    test_data = test_data[train_columns]
+
     st.write("### ✅ Your Input Data")
     st.write(test_data)
 
@@ -117,6 +110,7 @@ def mm(model__, dic_param):
         with st.spinner("🔍 Calculating prediction..."):
             predict_data = st.session_state.trained_model.predict(test_data)
             st.success(f"✅ Predicted Value: {predict_data[0]}")
+
 
 st.title("📌 AI Regression Models Playground")
 st.markdown('<div class="info-box">', unsafe_allow_html=True)
@@ -146,16 +140,12 @@ file = st.file_uploader("", type=["csv"], label_visibility="collapsed")
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-
-
-
-
-
-
-
 if file is not None:
     data = pd.read_csv(file)
     data.reset_index(drop=True, inplace=True)
+
+    # ✅ keep only numerical + object columns
+    data = data.select_dtypes(include=["number", "object"])
 
     columns = data.columns
     choosed_cols = st.multiselect("📌 Select columns to display:", default=columns, options=columns)
@@ -189,7 +179,7 @@ if file is not None:
     ])
     cat_pipe = Pipeline(steps=[
         ("median", SimpleImputer(strategy="most_frequent")),
-        ("encoding", OneHotEncoder())
+        ("encoding", OneHotEncoder(handle_unknown="ignore"))  # ✅ ignore unseen categories
     ])
     preproccessing = ColumnTransformer(transformers=[
         ("numerical", numerical_pipe, numerical_data),
@@ -224,6 +214,10 @@ if file is not None:
             else:
                 values[x] = st.selectbox(f"Choose the value for {x}:", options=train_data[x].unique().tolist())
         test_data = pd.DataFrame([values])
+
+        # ✅ match training columns
+        test_data = test_data[train_columns]
+
         st.write(test_data)
         if st.button("🚀 Predict the value"):
             predict_data = st.session_state.trained_model.predict(test_data)
@@ -285,12 +279,12 @@ if file is not None:
             'model__weights': ['uniform', 'distance']
         })
 
-    
 
+    # 📊 Visualization
     st.markdown("## 📊 Data Visualization")
     numerical_columns_gaph = data.select_dtypes(include="number").columns
     cat_columns_gaph = data.select_dtypes(include="object").columns
-    data_graph = data
+    data_graph = data.copy()
     for x in numerical_columns_gaph:
         data_graph[x] = data_graph[x].fillna(data_graph[x].mean())
     for x in cat_columns_gaph:
@@ -298,8 +292,8 @@ if file is not None:
 
     tab1, tab2, tab3 = st.tabs(["📌 Numerical Plots", "📈 Distribution", "📊 Categorical Analysis"])
     with tab1:
-        x = st.selectbox("Choose X-axis:", options=(data_graph.select_dtypes(include=["number"])).columns, key="tab_1_selecting")
-        y = st.selectbox("Choose Y-axis:", options=(data_graph.select_dtypes(include=["number"])).columns)
+        x = st.selectbox("Choose X-axis:", options=numerical_columns_gaph, key="tab_1_selecting")
+        y = st.selectbox("Choose Y-axis:", options=numerical_columns_gaph)
         col1, col2 = st.columns(2)
         with col1:
             fig_1 = px.scatter(data_graph, x=x, y=y, title="Scatter Plot", template="plotly_dark")
@@ -309,12 +303,12 @@ if file is not None:
             st.plotly_chart(fig_2, use_container_width=True)
 
     with tab2:
-        x = st.selectbox("Choose the column:", options=(data_graph.select_dtypes(include=["number"])).columns, key="tab_2_selecting")
+        x = st.selectbox("Choose the column:", options=numerical_columns_gaph, key="tab_2_selecting")
         fig_3 = px.box(data_graph, y=x, title="Box Plot", template="plotly_dark")
         st.plotly_chart(fig_3, use_container_width=True)
 
     with tab3:
-        x = st.selectbox("Choose categorical feature:", options=(data_graph.select_dtypes(include=["object"])).columns, key="tab_3_selectingx")
-        y = st.selectbox("Choose numerical feature:", options=(data_graph.select_dtypes(include=["number"])).columns, key="tab_3_selectingy")
+        x = st.selectbox("Choose categorical feature:", options=cat_columns_gaph, key="tab_3_selectingx")
+        y = st.selectbox("Choose numerical feature:", options=numerical_columns_gaph, key="tab_3_selectingy")
         fig_4 = px.histogram(data_graph, x=x, y=y, title="Categorical vs Numerical", template="plotly_dark")
         st.plotly_chart(fig_4, use_container_width=True)
